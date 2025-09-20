@@ -1,0 +1,81 @@
+name: Clean Repository
+
+# Trigger manual dengan workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_deletion:
+        description: 'Ketik "CONFIRM" untuk melanjutkan penghapusan'
+        required: true
+        default: ''
+        type: string
+
+jobs:
+  clean-repository:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    
+    - name: Validasi konfirmasi
+      run: |
+        if [ "${{ github.event.inputs.confirm_deletion }}" != "CONFIRM" ]; then
+          echo "❌ Penghapusan dibatalkan. Anda harus mengetik 'CONFIRM' untuk melanjutkan."
+          exit 1
+        fi
+        echo "✅ Konfirmasi diterima. Melanjutkan penghapusan..."
+    
+    - name: Configure Git
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+    
+    - name: Hapus semua file kecuali .github
+      run: |
+        echo "🗂️ File dan folder saat ini:"
+        ls -la
+        
+        echo "🗑️ Menghapus semua file dan folder kecuali .github..."
+        
+        # Hapus semua file dan folder kecuali .github dan .git
+        find . -mindepth 1 -maxdepth 1 ! -name '.github' ! -name '.git' -exec rm -rf {} +
+        
+        echo "✅ Penghapusan selesai!"
+        echo "📁 Isi repository setelah pembersihan:"
+        ls -la
+    
+    - name: Commit dan push perubahan
+      run: |
+        # Tambahkan semua perubahan (termasuk file yang dihapus)
+        git add -A
+        
+        # Cek apakah ada perubahan untuk di-commit
+        if git diff --staged --quiet; then
+          echo "ℹ️ Tidak ada perubahan untuk di-commit"
+        else
+          # Commit perubahan
+          git commit -m "🗑️ Bersihkan repository - hapus semua file kecuali .github
+          
+          - Menghapus semua file dan folder
+          - Mempertahankan folder .github untuk GitHub Actions
+          - Dibersihkan pada: $(date)"
+          
+          # Push ke repository
+          git push origin ${{ github.ref_name }}
+          
+          echo "✅ Perubahan berhasil di-push ke repository!"
+        fi
+    
+    - name: Ringkasan
+      run: |
+        echo "📋 RINGKASAN PEMBERSIHAN REPOSITORY"
+        echo "=================================="
+        echo "✅ Repository telah dibersihkan"
+        echo "📁 Folder .github tetap dipertahankan"
+        echo "🔧 GitHub Actions masih berfungsi normal"
+        echo "📅 Tanggal pembersihan: $(date)"
+        echo "👤 Dijalankan oleh: ${{ github.actor }}"
